@@ -2,35 +2,29 @@ import numpy as np
 import os
 import sys
 
-#############################################################
-# Script to preprocess flames into NN-digestable format
-# requires:
-# - cycles and ID files in folders GLCL_*
-# - input: batch
-
 batch = int(sys.argv[1])
-
-max_i = 200
+skip_initial = 0 #skip elements at beginning of data vector
 shrink_factor = 2
-n_snap = 8 #number snapshots to combine into single input vector
+n_snap = 4 #number snapshots to combine into single input vector
 sf = 2500 #real sampling frequency
-dat_length = int(np.ceil(max_i/shrink_factor))
-
-SRC = 'GLCL_{}/'.format(batch)
-
+p_min = 3000
+p_max = 9000
+p_vfr = 3000
+dat_length = int(np.ceil((360-skip_initial)/shrink_factor))
+'''
 #############################################################
 #Cut and shrink
-IDs,ps = np.loadtxt(SRC+'limit_cycles_{}.txt'.format(batch),unpack=True,usecols=(0,9),dtype='int',skiprows=1,delimiter=',')
+IDs,ps = np.loadtxt('GLCL_{}/limit_cycles_{}.txt'.format(batch,batch),usecols=(0,-1),unpack=True,dtype='int',skiprows=1,delimiter=',')
 for i,cycle in enumerate(IDs):
 	p = ps[i]
 	vfr = int(p/200)
 
 	SRC_DIR = 'GLCL_{}/LCL_p{}_{}/'.format(batch,p,batch)
-	DST_DIR= 'GLCL_{}/LCL_p{}_{}_mi{}_sf{}/'.format(batch,p,batch,max_i,shrink_factor)
+	DST_DIR = 'GLCL_{}/LCL_p{}_{}_s{}_f{}/'.format(batch,p,batch,skip_initial,shrink_factor)
 
 	if not os.path.isdir(DST_DIR):
 		os.mkdir(DST_DIR)
-	
+
 	SAVE_DIR = DST_DIR+'cycle_{}/'.format(cycle)
 	print(SAVE_DIR)
 	if not os.path.isdir(SAVE_DIR):
@@ -39,47 +33,45 @@ for i,cycle in enumerate(IDs):
 	for step in range(vfr,p+1,vfr):
 		fname = SRC_DIR+'cycle_{}/xover_{}.npy'.format(cycle,step)
 		dat = np.load(fname)
-		new_dat = dat[:max_i:shrink_factor]
-		new_dat = 2*new_dat/0.003 - 1 #Normalise between -1 and 1 
+		new_dat = dat[skip_initial::shrink_factor]
 		assert new_dat.shape[0] == dat_length
 
 		np.save(SAVE_DIR+'xover_{}.npy'.format(step),new_dat)
-
-
+'''
 #############################################################
-#Combine n_snaps into into one vector for each timestep + normalisation
-IDs,Fs,ps = np.loadtxt(SRC+'limit_cycles_{}.txt'.format(batch),unpack=True,usecols=(0,5,9),skiprows=1,delimiter=',')
-mean = np.load('inputs_mean.npy')
-std = np.load('inputs_std.npy')
-
-for i,ID in enumerate(IDs):
-	ID = int(ID)
+#Combine each cycle into a matrix where each row is a set of steps
+IDs,Fs,ps = np.loadtxt('GLCL_{}/limit_cycles_{}.txt'.format(batch,batch),usecols=(0,5,-1),unpack=True,skiprows=1,delimiter=',')
+for i,cycle in enumerate(IDs):
+	
+	ID = int(cycle)	
 	p = int(ps[i])
-	f = Fs[i]
 	vfr = int(p/200)
-
-	SRC_DIR = 'GLCL_{}/LCL_p{}_{}_mi{}_sf{}/'.format(batch,p,batch,max_i,shrink_factor)
-	DST_DIR = 'GLCL_{}/LCL_p{}_{}_mi{}_sf{}_n{}/'.format(batch,p,batch,max_i,shrink_factor,n_snap)
+	
+	SRC_DIR = 'GLCL_{}/LCL_p{}_{}_s{}_f{}/'.format(batch,p,batch,skip_initial,shrink_factor)
+	DST_DIR = 'GLCL_{}/LCL_p{}_{}_s{}_f{}_c{}/'.format(batch,p,batch,skip_initial,shrink_factor,n_snap)
 	
 	if not os.path.isdir(DST_DIR):
 		os.mkdir(DST_DIR)
 
+	f = int(Fs[i])
 	ratio = round((p*f/sf)/vfr)
 	print('Combining {}-{}-{}-{}'.format(p,ID,f,ratio))
 	src = SRC_DIR + 'cycle_{}/'.format(ID)
-	dst = DST_DIR + 'cycle_{}/'.format(ID)
-	if not os.path.isdir(dst):
-		os.mkdir(dst)
+	comb_dat = np.zeros(shape=(200,dat_length))
+	for step in range(vfr,p+1,vfr):
+		step_dat = np.load(src+'xover_{}.npy'.format(step)).reshape(1,-1)
+		comb_dat[int(step/vfr - 1)] = step_dat/0.003
+
+	#np.save(DST_DIR+'cycle_{}_dat.npy'.format(ID),comb_dat)
+	comb_snap_dat = np.zeros(shape=(200,dat_length*n_snap))
+	snaps = np.zeros(shape=(n_snap,dat_length))
 
 	for start in range(200):
-		snaps = np.zeros(shape=(n_snap,dat_length))
 		for snap in range(n_snap):
 			ix = int(start + snap*ratio)%200
-			step = int((1+ix)*vfr)
-			snap_dat = np.load(src+'xover_{}.npy'.format(step)).reshape(1,-1)
-			#snaps[snap,:] = (snap_dat-mean)/std
-			snaps[snap,:] = snap_dat
+			snap_dat = comb_dat[ix]
+			snaps[snap] = snap_dat
 
-		snaps = snaps.reshape(1,-1)
-		np.save(dst+'xover_{}.npy'.format(step),snaps)
+		comb_snap_dat[start] = snaps.reshape(1,-1)
 
+	np.save(DST_DIR+'cycle_{}_snaps.npy'.format(ID),comb_snap_dat)
