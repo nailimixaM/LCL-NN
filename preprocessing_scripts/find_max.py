@@ -1,6 +1,6 @@
 import numpy as np
 
-n_batch = 1
+n_batch = 4
 
 max_i = 0
 
