@@ -14,10 +14,10 @@ batch = 1
 p = 3000
 cycle = 1
 step = 15
-tf = 'GLCL_{}/LCL_p{}_{}_mi200_sf2_n8/cycle_{}/xover_{}.npy'.format(batch,p,batch,cycle,step)
-tdat = np.load(tf)
+tf = 'GLCL_{}/LCL_p{}_{}_s0_m270_f2/cycle_{}/xover_{}.npy'.format(batch,p,batch,cycle,step)
+tdat = np.load(tf)/0.003
 
-max_diff = 0.45
+max_diff = 0.04*1.5
 
 for i,cycle in enumerate(IDs):
 	cycle = int(cycle)
@@ -26,13 +26,14 @@ for i,cycle in enumerate(IDs):
 	vfr = int(p/200)
 	
 	for step in range(vfr,p+1,vfr):
-		f = 'GLCL_{}/LCL_p{}_{}_mi200_sf2_n8/cycle_{}/xover_{}.npy'.format(batch,p,batch,cycle,step)
+		f = 'GLCL_{}/LCL_p{}_{}_s0_m270_f2/cycle_{}/xover_{}.npy'.format(batch,p,batch,cycle,step)
 
-		dat = np.load(f)
+		dat = np.load(f)/0.003
 
 		diff = np.sum((tdat-dat)**2)
 		if diff < max_diff:
 			print('{}-{}-{}-{}'.format(batch,p,cycle,step))
 			print(diff)
 			print("{},{},{},{},{},{}".format(Ks[i],eas[i],Mks[i],vas[i],fs[i],betas[i]))
+		#_ = input()
 	

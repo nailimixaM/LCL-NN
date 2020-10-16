@@ -4,9 +4,9 @@ import sys
 
 batch = int(sys.argv[1])
 skip_initial = 0 #skip elements at beginning of data vector
-max_i = 270
-shrink_factor = 2
-n_snap = 8 #number snapshots to combine into single input vector
+max_i = 71
+shrink_factor = 1
+n_snap = 6 #number snapshots to combine into single input vector
 sf = 2500 #real sampling frequency
 p_min = 3000
 p_max = 9000
@@ -16,9 +16,11 @@ print(dat_length)
 
 #############################################################
 #Cut and shrink
-IDs,ps = np.loadtxt('GLCL_{}/limit_cycles_{}.txt'.format(batch,batch),usecols=(0,-1),unpack=True,dtype='int',skiprows=1,delimiter=',')
+IDs,ps = np.loadtxt('GLCL_{}/limit_cycles_{}.txt'.format(batch,batch),usecols=(0,-1),unpack=True,skiprows=1,delimiter=',')
+
 for i,cycle in enumerate(IDs):
-	p = ps[i]
+	cycle = int(cycle)
+	p = int(ps[i])
 	vfr = int(p/200)
 
 	SRC_DIR = 'GLCL_{}/LCL_p{}_{}/'.format(batch,p,batch)

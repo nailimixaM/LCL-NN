@@ -1,0 +1,1 @@
+../../7_param_6_targ/myNN.py

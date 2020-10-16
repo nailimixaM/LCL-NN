@@ -1,2 +1,11 @@
-GLCL_*
-**/mymodels/
+**/GLCL_*
+**/mymodels*
+**/output_*
+3_param/
+6_params/
+7_param/
+8_param/
+8_param_6_targ/
+8_param_large_ea/
+**/X*
+**/y*
